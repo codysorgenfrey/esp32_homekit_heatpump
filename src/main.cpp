@@ -160,6 +160,7 @@ void setup()
 {
     Serial.begin(115200);
     homeSpan.enableOTA();
+    homeSpan.setStatusPin(LED);
     homeSpan.begin(Category::AirConditioners, "Mitsubishi Split System");
 
     new SpanAccessory();
