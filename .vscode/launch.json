@@ -12,9 +12,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
+            "executable": "/home/cosorgen/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
             "projectEnvName": "esp32dev",
-            "toolchainBinDir": "/Users/codysorgenfrey/.platformio/packages/toolchain-xtensa32/bin",
+            "toolchainBinDir": "/home/cosorgen/.platformio/packages/toolchain-xtensa32/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchTask": {
                 "type": "PlatformIO",
@@ -25,18 +25,18 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
+            "executable": "/home/cosorgen/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
             "projectEnvName": "esp32dev",
-            "toolchainBinDir": "/Users/codysorgenfrey/.platformio/packages/toolchain-xtensa32/bin",
+            "toolchainBinDir": "/home/cosorgen/.platformio/packages/toolchain-xtensa32/bin",
             "internalConsoleOptions": "openOnSessionStart"
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
+            "executable": "/home/cosorgen/esp32-homekit-heatpump/.pio/build/esp32dev/firmware.elf",
             "projectEnvName": "esp32dev",
-            "toolchainBinDir": "/Users/codysorgenfrey/.platformio/packages/toolchain-xtensa32/bin",
+            "toolchainBinDir": "/home/cosorgen/.platformio/packages/toolchain-xtensa32/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "loadMode": "manual"
         }
