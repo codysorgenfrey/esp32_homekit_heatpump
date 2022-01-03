@@ -1,6 +1,8 @@
-#include "heatpump.h"
-#include "heatpumpfan.h"
-#include "heatpumpslats.h"
+#include "heatPumpAccessory.h"
+#include "heatPumpFanAccessory.h"
+#include "heatPumpSlatsAccessory.h"
+
+HeatPump hp;
 
 void setup()
 {
@@ -17,7 +19,7 @@ void setup()
         new Service::AccessoryInformation();
             new Characteristic::Name(NAME);
             new Characteristic::Manufacturer(MANUFACTURER);
-            new Characteristic::SerialNumber(SERIAL);  
+            new Characteristic::SerialNumber(SERIALNUM);  
             new Characteristic::Model(MODEL);
             new Characteristic::FirmwareRevision("0.1");
             new Characteristic::Identify();
@@ -25,9 +27,9 @@ void setup()
         new Service::HAPProtocolInformation();
             new Characteristic::Version("2.2.0");
 
-        (new HeatPump())->setPrimary();
-        new HeatPumpFan();
-        new HeatPumpSlats();
+        (new HeatPumpAccessory(&hp))->setPrimary();
+        new HeatPumpFanAccessory(&hp);
+        new HeatPumpSlatsAccessory(&hp);
 }
 
 void loop()

@@ -1,14 +1,15 @@
 #include "common.h"
 
-struct HeatPumpSlats : Service::Slat
+struct HeatPumpSlatsAccessory : Service::Slat
 {
     SpanCharacteristic *curState;
     SpanCharacteristic *type;
     SpanCharacteristic *swingMode;
     SpanCharacteristic *curAngle;
     SpanCharacteristic *tarAngle;
+    HeatPump *hp;
 
-    HeatPumpSlats() : Service::Slat()
+    HeatPumpSlatsAccessory(HeatPump *inHp) : Service::Slat()
     { 
         // init heatpump stuff here
         curState = new Characteristic::CurrentSlatState(0); // 0 fixed, 1 jammed, 2 swinging
@@ -16,6 +17,7 @@ struct HeatPumpSlats : Service::Slat
         swingMode = new Characteristic::SwingMode(0); // 0 disabled, 1 enabled
         curAngle = new Characteristic::CurrentTiltAngle(0); // -90 to 90 where -90 is straight out and 90 is straight down
         tarAngle = new Characteristic::TargetTiltAngle(0);
+        hp = inHp;
     }
 
     boolean update()
@@ -31,7 +33,7 @@ struct HeatPumpSlats : Service::Slat
     }
 
     void updateACState() {
-        hp.update();
+        hp->update();
     }
 
     void updateHomekitState() {

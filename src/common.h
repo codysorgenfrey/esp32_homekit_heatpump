@@ -5,6 +5,4 @@
 #define MANUFACTURER "Mitsubishi Electric"
 #define NAME "Split System Heat Pump"
 #define MODEL "MSZ-GL12NA"
-#define SERIAL "88N11479"
-
-HeatPump hp;
+#define SERIALNUM "88N11479"

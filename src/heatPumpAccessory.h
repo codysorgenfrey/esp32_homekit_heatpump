@@ -1,6 +1,6 @@
 #include "common.h"
 
-struct HeatPump : Service::HeaterCooler
+struct HeatPumpAccessory : Service::HeaterCooler
 {
     SpanCharacteristic *active;
     SpanCharacteristic *curTemp;
@@ -9,6 +9,7 @@ struct HeatPump : Service::HeaterCooler
     SpanCharacteristic *displayUnits;
     SpanCharacteristic *coolingThresholdTemp;
     SpanCharacteristic *heatingThresholdTemp;
+    HeatPump *hp;
     const char *acModes[4] = {
         "AUTO",
         "HEAT",
@@ -16,33 +17,34 @@ struct HeatPump : Service::HeaterCooler
         "AUTO" // supposed to be off, but will be handled by active state
     };
 
-    HeatPump() : Service::HeaterCooler()
+    HeatPumpAccessory(HeatPump *inHp) : Service::HeaterCooler()
     { 
         active = new Characteristic::Active(1); // 1 is active 0 is inactive
-        curTemp = new Characteristic::CurrentTemperature(hp.getRoomTemperature()); // init current device temp here
+        curTemp = new Characteristic::CurrentTemperature(hp->getRoomTemperature()); // init current device temp here
         curState = new Characteristic::CurrentHeaterCoolerState(1); // 0 inactive, 1 idle, 2 heating, 3 cooling
         tarState = new Characteristic::TargetHeaterCoolerState(0); // 0 auto, 1 heating, 2 cooling, 3 off
         coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(22);
         heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(18);
+        hp = inHp;
     }
 
     boolean update()
     { 
         // printDiagnostic();
         updateACState();
-        updateHomekitState(hp.getRoomTemperature(), hp.getOperating());
+        updateHomekitState(hp->getRoomTemperature(), hp->getOperating());
         return true;
     }
 
     void loop() {
-        updateHomekitState(hp.getRoomTemperature(), hp.getOperating());
+        updateHomekitState(hp->getRoomTemperature(), hp->getOperating());
     }
 
     void updateHomekitState(double roomTemp, bool operating) {
         // Tell homekit what AC is up to
 
         int state = tarState->getNewVal();
-        double temp = hp.getTemperature();
+        double temp = hp->getTemperature();
         if (state == 0) // Auto
         {
             double avgTemp = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
@@ -87,11 +89,11 @@ struct HeatPump : Service::HeaterCooler
 
     void updateACState() {
         /* ON/OFF */
-        hp.setPowerSetting(active->getNewVal() ? "ON" : "OFF");
+        hp->setPowerSetting(active->getNewVal() ? "ON" : "OFF");
 
         /* HEAT/COOL/FAN/DRY/AUTO */
         int state = tarState->getNewVal();
-        hp.setModeSetting(acModes[state]);
+        hp->setModeSetting(acModes[state]);
 
         /* Temperature Between 16 and 31 */
         double temp;
@@ -102,9 +104,11 @@ struct HeatPump : Service::HeaterCooler
         else // Auto
             temp = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
         
-        hp.setTemperature(min(max(temp, 16), 31));
+        temp = max(temp, 16.0);
+        temp = min(temp, 31.0);
+        hp->setTemperature(temp);
 
-        hp.update();
+        hp->update();
     }
 
     void printDiagnostic() {
