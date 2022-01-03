@@ -8,9 +8,10 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "/Users/codysorgenfrey/Developer/esp32-homekit/include",
-                "/Users/codysorgenfrey/Developer/esp32-homekit/src",
-                "/Users/codysorgenfrey/Developer/esp32-homekit/.pio/libdeps/esp32dev/HomeSpan/src",
+                "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/include",
+                "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/src",
+                "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/libdeps/esp32dev/HeatPump/src",
+                "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/libdeps/esp32dev/HomeSpan/src",
                 "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                 "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",
@@ -107,9 +108,10 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "/Users/codysorgenfrey/Developer/esp32-homekit/include",
-                    "/Users/codysorgenfrey/Developer/esp32-homekit/src",
-                    "/Users/codysorgenfrey/Developer/esp32-homekit/.pio/libdeps/esp32dev/HomeSpan/src",
+                    "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/include",
+                    "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/src",
+                    "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/libdeps/esp32dev/HeatPump/src",
+                    "/Users/codysorgenfrey/Developer/esp32-homekit-heatpump/.pio/libdeps/esp32dev/HomeSpan/src",
                     "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                     "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/Users/codysorgenfrey/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",

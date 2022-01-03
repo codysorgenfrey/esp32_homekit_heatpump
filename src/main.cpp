@@ -1,8 +1,9 @@
 #include "HomeSpan.h"
+#include "HeatPump.h"
 
 #define LED 2
 
-double temp;
+HeatPump hp;
 
 struct HeatPump : Service::HeaterCooler
 {
@@ -60,25 +61,57 @@ struct HeatPump : Service::HeaterCooler
         Serial.print("heatingThresholdTemp: ");
         Serial.println(heatingThresholdTemp->getNewVal());
 
-        // update homekit
+        // update homekit and heatpump
+        heatpumpSettings settings = hp.getSettings();
         int state = tarState->getNewVal();
-        curState->setVal(1); // Set state to idle since we're at the target temp
+        double roomTemp = hp.getRoomTemperature();
+        bool operating = hp.getOperating();
 
-        temp = curTemp->getVal();
-        if (state == 1){
-            temp = heatingThresholdTemp->getNewVal();
-        } else if (state == 2) {
-            temp = coolingThresholdTemp->getNewVal();
+        if (state == 0) { // Auto
+            settings.mode = "AUTO";
+            settings.temperature = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
+            if (operating && (roomTemp < settings.temperature)) curState->setVal(2); // Heating
+            else if (operating && (roomTemp > settings.temperature)) curState->setVal(3); // Cooling
+            else curState->setVal(1); // Idle
+        } else if (state == 1){ // Heating
+            settings.mode = "HEAT";
+            settings.temperature = heatingThresholdTemp->getNewVal();
+            if (operating) curState->setVal(2); // Heating
+            else curState->setVal(1); // Idle
+        } else if (state == 2) { // Cooling
+            settings.mode = "COOL";
+            settings.temperature = coolingThresholdTemp->getNewVal();
+            if (operating) curState->setVal(3); // Cooling
+            else curState->setVal(1); // Idle
         }
-        curTemp->setVal(temp);
+
+        curTemp->setVal(roomTemp);
+        settings.power = active->getNewVal() ? "ON" : "OFF";
+        hp.setSettings(settings);
 
         return true;
     }
 
     void loop() {
         // update homekit
-        if (curTemp->getVal() != temp)
-            curTemp->setVal(temp);
+        int state = curState->getNewVal();
+        double roomTemp = hp.getRoomTemperature();
+        bool operating = hp.getOperating();
+
+        if (state == 0) { // Auto
+            double temp = ((heatingThresholdTemp->getVal() - coolingThresholdTemp->getVal()) / 2) + coolingThresholdTemp->getVal(); // set temp in the middle
+            if (operating && (roomTemp < temp)) curState->setVal(2); // Heating
+            else if (operating && (roomTemp > temp)) curState->setVal(3); // Cooling
+            else curState->setVal(1); // Idle
+        } else if (state == 1){ // Heating
+            if (operating) curState->setVal(2); // Heating
+            else curState->setVal(1); // Idle
+        } else if (state == 2) { // Cooling
+            if (operating) curState->setVal(3); // Cooling
+            else curState->setVal(1); // Idle
+        }
+
+        if (curTemp->getVal() != roomTemp) curTemp->setVal(roomTemp);
     }
 };
 
@@ -108,10 +141,22 @@ struct HeatPumpFan : Service::Fan
         Serial.println(speed->getNewVal());
 
         Serial.print("TarState: ");
-        Serial.println(tarState->getNewVal());
+        Serial.println(tarState->getNewVal() ? "Manual" : "Auto");
 
         // update homekit
-        curState->setVal(2);
+        curState->setVal(hp.getOperating() ? 2 : 1);
+        
+        const char *fanSpeed;
+        if (!active->getNewVal()) {
+            fanSpeed = "OFF";
+        } else if (tarState->getNewVal() == 1) {
+            fanSpeed = "AUTO";
+        } else {
+            double speed1_4 = floor((speed->getNewVal() / 25) + 0.5);
+            fanSpeed = String(speed1_4).c_str();
+            speed->setVal(speed1_4 * 25); // let homekit know we're rounding
+        }
+        hp.setFanSpeed(fanSpeed);
 
         return true;
     }
@@ -158,7 +203,12 @@ struct HeatPumpSlats : Service::Slat
 
 void setup()
 {
+    hp.connect(&Serial);
+    hp.enableAutoUpdate();
+    hp.enableExternalUpdate();
+
     Serial.begin(115200);
+
     homeSpan.enableOTA();
     homeSpan.setStatusPin(LED);
     homeSpan.begin(Category::AirConditioners, "Mitsubishi Split System");
@@ -183,4 +233,5 @@ void setup()
 void loop()
 {
     homeSpan.poll();
+    hp.sync();
 }
