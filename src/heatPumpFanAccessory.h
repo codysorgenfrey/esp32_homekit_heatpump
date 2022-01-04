@@ -46,12 +46,12 @@ struct HeatPumpFanAccessory : Service::Fan
         /* Fan speed: 1-4, AUTO, or QUIET */
         if (!active->getNewVal() && !tarState->getNewVal()) {
             hp->setFanSpeed("QUIET");
-            return;
+            return hp->update();
         } 
         
         if (tarState->getNewVal() == 1) {
             hp->setFanSpeed("AUTO");
-            return;
+            return hp->update();
         } 
         
         int speed0_4 = roundFanSpeed(speed->getNewVal());
