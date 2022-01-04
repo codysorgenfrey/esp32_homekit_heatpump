@@ -6,14 +6,23 @@ HeatPump hp;
 
 void setup()
 {
-    hp.connect(&Serial);
-    hp.enableExternalUpdate();
-
     Serial.begin(115200);
 
     homeSpan.enableOTA();
     homeSpan.setStatusPin(LED);
     homeSpan.begin(Category::AirConditioners, NAME, MANUFACTURER, MODEL);
+
+    hp.connect(&Serial1);
+    hp.enableExternalUpdate();
+    hp.setSettings({ // Set some defaults
+        "ON",  /* ON/OFF */
+        "AUTO", /* HEAT/COOL/FAN/DRY/AUTO */
+        20,    /* Between 16 and 31 */
+        "AUTO",   /* Fan speed: 1-4, AUTO, or QUIET */
+        "AUTO",   /* Air direction (vertical): 1-5, SWING, or AUTO */
+        "|"    /* Air direction (horizontal): <<, <, |, >, >>, <>, or SWING */
+    });
+    Serial.println(hp.update() ? "Update HP success" : "Update HP failed");
 
     new SpanAccessory();
         new Service::AccessoryInformation();
@@ -35,5 +44,8 @@ void setup()
 void loop()
 {
     homeSpan.poll();
-    hp.sync();
+
+    #if !TESTING_HP
+        hp.sync();
+    #endif
 }

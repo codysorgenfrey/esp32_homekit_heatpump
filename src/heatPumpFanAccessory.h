@@ -10,31 +10,39 @@ struct HeatPumpFanAccessory : Service::Fan
 
     HeatPumpFanAccessory(HeatPump *inHp) : Service::Fan()
     { 
+        hp = inHp;
         active = new Characteristic::Active(1);
         speed = new Characteristic::RotationSpeed(); // 0-100
         curState = new Characteristic::CurrentFanState(); // 0 inactive, 1 idle, 2 blowing air
         tarState = new Characteristic::TargetFanState(); // 0 manual, 1 auto (home app thinks this is on or off)
-        hp = inHp;
     }
 
     boolean update()
     { 
-        // printDiagnostic();
-        updateACState();
+        #if DEBUG_HOMEKIT
+            printDiagnostic();
+        #endif
+
+        bool success = updateACState();
         updateHomekitState();
-        return true;
+        
+        #if TESTING_HP
+            return true;
+        #else
+            return success;
+        #endif
     }
 
     void loop() {
-
+        updateHomekitState();
     }
 
     void updateHomekitState() {
         curState->setVal(hp->getOperating() ? 2 : 1);
-        speed->setVal(roundFanSpeed(speed->getNewVal())); // Tell homekit we're rounding
+        speed->setVal(roundFanSpeed(speed->getNewVal()) * 25);
     }
 
-    void updateACState() {
+    bool updateACState() {
         /* Fan speed: 1-4, AUTO, or QUIET */
         if (!active->getNewVal() && !tarState->getNewVal()) {
             hp->setFanSpeed("QUIET");
@@ -50,7 +58,7 @@ struct HeatPumpFanAccessory : Service::Fan
         const char *fanSpeed = speed0_4 != 0 ? String(speed0_4).c_str() : "QUIET";
         hp->setFanSpeed(fanSpeed);
 
-        hp->update();
+        return hp->update();
     }
 
     int roundFanSpeed(double speed) {

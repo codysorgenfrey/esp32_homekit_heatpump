@@ -11,29 +11,36 @@ struct HeatPumpSlatsAccessory : Service::Slat
 
     HeatPumpSlatsAccessory(HeatPump *inHp) : Service::Slat()
     { 
-        // init heatpump stuff here
+        hp = inHp;
         curState = new Characteristic::CurrentSlatState(0); // 0 fixed, 1 jammed, 2 swinging
         type = new Characteristic::SlatType(1); // 0 horizontal, 1 vertical
         swingMode = new Characteristic::SwingMode(0); // 0 disabled, 1 enabled
         curAngle = new Characteristic::CurrentTiltAngle(0); // -90 to 90 where -90 is straight out and 90 is straight down
         tarAngle = new Characteristic::TargetTiltAngle(0);
-        hp = inHp;
     }
 
     boolean update()
     { 
-        // printDiagnostic();
-        updateACState();
+        #if DEBUG_HOMEKIT
+            printDiagnostic();
+        #endif
+
+        bool success = updateACState();
         updateHomekitState();
-        return true;
+        
+        #if TESTING_HP
+            return true;
+        #else
+            return success;
+        #endif
     }
 
     void loop() {
-
+        updateHomekitState();
     }
 
-    void updateACState() {
-        hp->update();
+    bool updateACState() {
+        return hp->update();
     }
 
     void updateHomekitState() {

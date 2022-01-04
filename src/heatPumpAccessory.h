@@ -19,21 +19,33 @@ struct HeatPumpAccessory : Service::HeaterCooler
 
     HeatPumpAccessory(HeatPump *inHp) : Service::HeaterCooler()
     { 
+        hp = inHp;
         active = new Characteristic::Active(1); // 1 is active 0 is inactive
-        curTemp = new Characteristic::CurrentTemperature(hp->getRoomTemperature()); // init current device temp here
+        #if TESTING_HP
+            curTemp = new Characteristic::CurrentTemperature(20.0); // init current device temp
+        #else
+            curTemp = new Characteristic::CurrentTemperature(hp->getRoomTemperature()); // init current device temp
+        #endif
         curState = new Characteristic::CurrentHeaterCoolerState(1); // 0 inactive, 1 idle, 2 heating, 3 cooling
         tarState = new Characteristic::TargetHeaterCoolerState(0); // 0 auto, 1 heating, 2 cooling, 3 off
-        coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(22);
-        heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(18);
-        hp = inHp;
+        coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(DEFAULT_COOL_THRESH); // 10-35
+        heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(DEFAULT_HEAT_THRESH); // 0-25
     }
 
     boolean update()
     { 
-        // printDiagnostic();
-        updateACState();
+        #if DEBUG_HOMEKIT
+            printDiagnostic();
+        #endif
+
+        bool success = updateACState();
         updateHomekitState(hp->getRoomTemperature(), hp->getOperating());
-        return true;
+        
+        #if TESTING_HP
+            return true;
+        #else
+            return success;
+        #endif
     }
 
     void loop() {
@@ -41,13 +53,17 @@ struct HeatPumpAccessory : Service::HeaterCooler
     }
 
     void updateHomekitState(double roomTemp, bool operating) {
-        // Tell homekit what AC is up to
-
         int state = tarState->getNewVal();
-        double temp = hp->getTemperature();
+        
+        #if TESTING_HP 
+            double temp = 20.0;
+        #else
+            double temp = hp->getTemperature(); // read in temp set with remote
+        #endif
+        
         if (state == 0) // Auto
         {
-            double avgTemp = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
+            double avgTemp = ((coolingThresholdTemp->getNewVal() - heatingThresholdTemp->getNewVal()) / 2) + heatingThresholdTemp->getNewVal(); // set temp in the middle
             if (operating && (roomTemp < avgTemp)) // Heating
                 curState->setVal(2); 
             else if (operating && (roomTemp > avgTemp)) // Cooling
@@ -87,7 +103,7 @@ struct HeatPumpAccessory : Service::HeaterCooler
             curTemp->setVal(roomTemp);
     }
 
-    void updateACState() {
+    bool updateACState() {
         /* ON/OFF */
         hp->setPowerSetting(active->getNewVal() ? "ON" : "OFF");
 
@@ -108,7 +124,7 @@ struct HeatPumpAccessory : Service::HeaterCooler
         temp = min(temp, 31.0);
         hp->setTemperature(temp);
 
-        hp->update();
+        return hp->update();
     }
 
     void printDiagnostic() {
