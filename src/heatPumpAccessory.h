@@ -3,33 +3,33 @@
 struct HeatPumpAccessory : Service::HeaterCooler
 {
     SpanCharacteristic *active;
-    SpanCharacteristic *curTemp;
+    SpanCharacteristic *roomTemp;
     SpanCharacteristic *curState;
     SpanCharacteristic *tarState;
     SpanCharacteristic *displayUnits;
     SpanCharacteristic *coolingThresholdTemp;
     SpanCharacteristic *heatingThresholdTemp;
     HeatPump *hp;
-    const char *acModes[4] = {
+    const char *hpModes[4] = {
         "AUTO",
         "HEAT",
         "COOL",
-        "AUTO" // supposed to be off, but will be handled by active state
+        "OFF"
     };
 
     HeatPumpAccessory(HeatPump *inHp) : Service::HeaterCooler()
     { 
         hp = inHp;
-        active = new Characteristic::Active(1); // 1 is active 0 is inactive
-        #if TESTING_HP
-            curTemp = new Characteristic::CurrentTemperature(20.0); // init current device temp
-        #else
-            curTemp = new Characteristic::CurrentTemperature(hp->getRoomTemperature()); // init current device temp
+        active = new Characteristic::Active();
+        curState = new Characteristic::CurrentHeaterCoolerState();                // 0 inactive, 1 idle, 2 heating, 3 cooling
+        tarState = new Characteristic::TargetHeaterCoolerState();                 // 0 auto, 1 heating, 2 cooling, 3 off
+        coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(); // 10-35
+        heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(); // 0-25
+        roomTemp = new Characteristic::CurrentTemperature();                      // current device temp
+
+        #if !TESTING_HP
+            updateHomekitState();
         #endif
-        curState = new Characteristic::CurrentHeaterCoolerState(1); // 0 inactive, 1 idle, 2 heating, 3 cooling
-        tarState = new Characteristic::TargetHeaterCoolerState(0); // 0 auto, 1 heating, 2 cooling, 3 off
-        coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(DEFAULT_COOL_THRESH); // 10-35
-        heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(DEFAULT_HEAT_THRESH); // 0-25
     }
 
     boolean update()
@@ -37,92 +37,131 @@ struct HeatPumpAccessory : Service::HeaterCooler
         #if DEBUG_HOMEKIT
             printDiagnostic();
         #endif
-
-        bool success = updateACState();
-        updateHomekitState(hp->getRoomTemperature(), hp->getOperating());
         
         #if TESTING_HP
+            updateHeatPumpState();
             return true;
         #else
-            return success;
+            return updateHeatPumpState();
         #endif
     }
 
     void loop() {
-        updateHomekitState(hp->getRoomTemperature(), hp->getOperating());
-    }
-
-    void updateHomekitState(double roomTemp, bool operating) {
-        int state = tarState->getNewVal();
-        
-        #if TESTING_HP 
-            double temp = 20.0;
-        #else
-            double temp = hp->getTemperature(); // read in temp set with remote
+        #if !TESTING_HP
+            if (millis() % (HK_UPDATE_TIMER * 1000) == 0)
+                updateHomekitState();
         #endif
-        
-        if (state == 0) // Auto
-        {
-            double avgTemp = ((coolingThresholdTemp->getNewVal() - heatingThresholdTemp->getNewVal()) / 2) + heatingThresholdTemp->getNewVal(); // set temp in the middle
-            if (operating && (roomTemp < avgTemp)) // Heating
-                curState->setVal(2); 
-            else if (operating && (roomTemp > avgTemp)) // Cooling
-                curState->setVal(3); 
-            else // Idle
-                curState->setVal(1); 
-
-            if (avgTemp != temp) 
-            {
-                double diff = avgTemp - temp;
-                heatingThresholdTemp->setVal(heatingThresholdTemp->getNewVal() + diff);
-                coolingThresholdTemp->setVal(coolingThresholdTemp->getNewVal() + diff);
-            }
-        } 
-        else if (state == 1) // Heating
-        { 
-            if (operating) 
-                curState->setVal(2); // Heating
-            else 
-                curState->setVal(1); // Idle
-
-            if (heatingThresholdTemp->getNewVal() != temp)
-                heatingThresholdTemp->setVal(temp);
-        } 
-        else if (state == 2) // Cooling
-        { 
-            if (operating) 
-                curState->setVal(3); // Cooling
-            else 
-                curState->setVal(1); // Idle
-
-            if (coolingThresholdTemp->getNewVal() != temp)
-                coolingThresholdTemp->setVal(temp);
-        }
-
-        if (curTemp->getVal() != roomTemp) 
-            curTemp->setVal(roomTemp);
     }
 
-    bool updateACState() {
-        /* ON/OFF */
+    void updateHomekitState() {
+        //////////////////////////////////////////////////////////////////
+        // Get variables from Heat Pump & Homekit                       //
+        //////////////////////////////////////////////////////////////////
+        
+        double hpTemp = hp->getTemperature();
+        double hpRoomTemp = hp->getRoomTemperature();
+
+        int hpTarState;
+        for (hpTarState = 0; hpTarState < 3; hpTarState += 1) { // has to be 1 less then count since we use hpTarState later
+            if (hpModes[hpTarState] == hp->getModeSetting())
+                break;
+        }
+        if (hpTarState == 3) hpTarState = 0; // Unsupported modes, setting Homekit to auto
+        
+        int hpCurState;
+        double hkTemp;
+        switch (hpTarState)
+        {
+        case 1: // Heating
+            hkTemp = heatingThresholdTemp->getVal();
+            hpCurState = 2;
+            break;
+
+        case 2: // Cooling
+            hkTemp = coolingThresholdTemp->getVal();
+            hpCurState = 3;
+            break;
+        
+        default: // Auto and Off
+            hkTemp = ((heatingThresholdTemp->getVal() - coolingThresholdTemp->getVal()) / 2) + coolingThresholdTemp->getVal(); // set temp in the middle
+            hpCurState = hkTemp >= hpRoomTemp ? 2 : 3;
+            break;
+        }
+        
+        if (!hp->getOperating() && !(hpCurState == 0)) // Idle
+            hpCurState = 1;
+
+        //////////////////////////////////////////////////////////////////
+        // Update homekit if things don't match                         //
+        //////////////////////////////////////////////////////////////////
+
+        // Active
+        if (active->getVal() != hp->getPowerSettingBool())
+            active->setVal(hp->getPowerSettingBool());
+
+        // Mode
+        if (hpModes[hpTarState] != hp->getModeSetting())
+            tarState->setVal(hpTarState);
+
+        // State
+        if (hpCurState != curState->getVal())
+            curState->setVal(hpCurState);
+
+        // Temperature
+        if (hkTemp != hpTemp)
+            switch (hpTarState)
+            {
+            case 1: // Heating
+                heatingThresholdTemp->setVal(hpTemp);
+                break;
+
+            case 2: // Cooling
+                coolingThresholdTemp->setVal(hpTemp);
+                break;
+            
+            default: // Auto and Off
+                double diff = hpTemp - hkTemp;
+                coolingThresholdTemp->setVal(coolingThresholdTemp->getVal() + diff);
+                heatingThresholdTemp->setVal(heatingThresholdTemp->getVal() + diff);
+                break;
+            }
+
+        // Room temperature
+        if (roomTemp->getVal() != hp->getRoomTemperature()) 
+            roomTemp->setVal(hp->getRoomTemperature());
+    }
+
+    bool updateHeatPumpState() {
+        // Active
         hp->setPowerSetting(active->getNewVal() ? "ON" : "OFF");
 
-        /* HEAT/COOL/FAN/DRY/AUTO */
-        int state = tarState->getNewVal();
-        hp->setModeSetting(acModes[state]);
+        // Mode
+        int hkTarState = tarState->getNewVal();
+        if (hkTarState == 3) hkTarState = 0; // If set to off, set to auto
+        hp->setModeSetting(hpModes[hkTarState]);
 
-        /* Temperature Between 16 and 31 */
-        double temp;
-        if (state == 1) // Heating
-            temp = heatingThresholdTemp->getNewVal();
-        else if (state == 2) // Cooling
-            temp = coolingThresholdTemp->getNewVal();
-        else // Auto
-            temp = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
+        // Temperature
+        double hkTemp;
+        switch (hkTarState)
+        {
+        case 1: // Heating
+            hkTemp = heatingThresholdTemp->getNewVal();
+            break;
+
+        case 2: // Cooling
+            hkTemp = coolingThresholdTemp->getNewVal();
+            break;
         
-        temp = max(temp, 16.0);
-        temp = min(temp, 31.0);
-        hp->setTemperature(temp);
+        default: // Auto and Off
+            hkTemp = ((heatingThresholdTemp->getNewVal() - coolingThresholdTemp->getNewVal()) / 2) + coolingThresholdTemp->getNewVal(); // set temp in the middle
+            break;
+        }
+        
+        /* Temperature Between 16 and 31 */
+        hkTemp = max(hkTemp, 16.0);
+        hkTemp = min(hkTemp, 31.0);
+        
+        hp->setTemperature(hkTemp);
 
         return hp->update();
     }
@@ -134,27 +173,7 @@ struct HeatPumpAccessory : Service::HeaterCooler
         Serial.println(active->getNewVal() ? "On" : "Off");
 
         Serial.print("tarState: ");
-        switch (tarState->getNewVal())
-        {
-        case 0:
-            Serial.println("Auto");
-            break;
-        
-        case 1:
-            Serial.println("Heating");
-            break;
-
-        case 2:
-            Serial.println("Cooling");
-            break;
-
-        case 3:
-            Serial.println("Off");
-            break;
-        
-        default:
-            break;
-        }
+        Serial.println(hpModes[tarState->getNewVal()]);
 
         Serial.print("coolingThresholdTemp: ");
         Serial.println(coolingThresholdTemp->getNewVal());

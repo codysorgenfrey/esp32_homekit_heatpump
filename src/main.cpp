@@ -10,19 +10,20 @@ void setup()
 
     homeSpan.enableOTA();
     homeSpan.setStatusPin(LED);
-    homeSpan.begin(Category::AirConditioners, NAME, MANUFACTURER, MODEL);
+    homeSpan.setSketchVersion(SKETCH_VER);
+    homeSpan.begin(Category::AirConditioners, UNIQUE_NAME, MANUFACTURER, MODEL);
 
     hp.connect(&Serial1);
     hp.enableExternalUpdate();
     hp.setSettings({ // Set some defaults
-        "ON",  /* ON/OFF */
+        "ON",   /* ON/OFF */
         "AUTO", /* HEAT/COOL/FAN/DRY/AUTO */
-        20,    /* Between 16 and 31 */
-        "AUTO",   /* Fan speed: 1-4, AUTO, or QUIET */
-        "AUTO",   /* Air direction (vertical): 1-5, SWING, or AUTO */
-        "|"    /* Air direction (horizontal): <<, <, |, >, >>, <>, or SWING */
+        20,     /* Between 16 and 31 */
+        "AUTO", /* Fan speed: 1-4, AUTO, or QUIET */
+        "AUTO", /* Air direction (vertical): 1-5, SWING, or AUTO */
+        "|"     /* Air direction (horizontal): <<, <, |, >, >>, <>, or SWING */
     });
-    Serial.println(hp.update() ? "Update HP success" : "Update HP failed");
+    hp.update();
 
     new SpanAccessory();
         new Service::AccessoryInformation();
@@ -34,7 +35,7 @@ void setup()
             new Characteristic::Identify();
 
         new Service::HAPProtocolInformation();
-            new Characteristic::Version("2.2.0");
+            new Characteristic::Version("1.1.0");
 
         (new HeatPumpAccessory(&hp))->setPrimary();
         new HeatPumpFanAccessory(&hp);
