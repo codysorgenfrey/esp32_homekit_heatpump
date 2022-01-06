@@ -26,10 +26,6 @@ struct HeatPumpAccessory : Service::HeaterCooler
         coolingThresholdTemp = new Characteristic::CoolingThresholdTemperature(); // 10-35
         heatingThresholdTemp = new Characteristic::HeatingThresholdTemperature(); // 0-25
         roomTemp = new Characteristic::CurrentTemperature();                      // current device temp
-
-        #if !TESTING_HP
-            updateHomekitState();
-        #endif
     }
 
     boolean update()

@@ -15,10 +15,6 @@ struct HeatPumpFanAccessory : Service::Fan
         speed = new Characteristic::RotationSpeed();      // 0-100
         curState = new Characteristic::CurrentFanState(); // 0 inactive, 1 idle, 2 blowing air
         fanAuto = new Characteristic::TargetFanState();  // 0 manual, 1 auto
-
-        #if !TESTING_HP
-            updateHomekitState();
-        #endif
     }
 
     boolean update()

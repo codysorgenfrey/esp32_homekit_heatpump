@@ -17,10 +17,6 @@ struct HeatPumpSlatsAccessory : Service::Slat
         swingMode = new Characteristic::SwingMode();       // 0 disabled, 1 enabled
         curAngle = new Characteristic::CurrentTiltAngle(); // -90 to 90 where -90 is straight out and 90 is straight down
         tarAngle = new Characteristic::TargetTiltAngle();
-
-        #if !TESTING_HP
-            updateHomekitState();
-        #endif
     }
 
     boolean update()

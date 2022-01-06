@@ -14,5 +14,5 @@
 #define DEFAULT_COOL_THRESH 23.3333 // 74 Deg F
 #define HK_UPDATE_TIMER 15 // Update homekit every X seconds
 
-#define TESTING_HP true
+#define TESTING_HP false
 #define DEBUG_HOMEKIT false

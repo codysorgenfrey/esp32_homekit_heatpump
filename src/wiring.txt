@@ -1,0 +1,7 @@
+CN105    <--->    ESP32
+------------------------------
+12V 1
+GND 2    Black    14 GND 
+5V  3    Red      19 VIN
+TX  4    Green    17 SD3 (TX1)
+RX  5    Blue     16 SD2 (TX2)
